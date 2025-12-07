@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>⚽ My Football Game</title>
+    
+    <!-- This connects our CSS file for styling -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="game-shell">
+        <!-- This is our game title -->
+        <h1>⚽ My Football Game ⚽</h1>
+        
+        <!-- Game mode selector -->
+        <div id="mode-selector">
+            <p>Choose Game Mode:</p>
+            <button id="single-btn" onclick="selectMode('single')">🎮 1 PLAYER (vs AI)</button>
+            <button id="multi-btn" onclick="selectMode('multi')">👥 2 PLAYERS (vs Friend)</button>
+        </div>
+        
+        <!-- Difficulty selector (only shows before game starts) -->
+        <div id="difficulty-selector" style="display: none;">
+            <p>Choose Difficulty:</p>
+            <button id="easy-btn" onclick="startGame('easy')">🟢 EASY</button>
+            <button id="medium-btn" onclick="startGame('medium')">🟡 MEDIUM</button>
+            <button id="hard-btn" onclick="startGame('hard')">🔴 HARD</button>
+        </div>
+        
+        <div class="game-area">
+            <!-- This is where we show the score and time -->
+            <div id="game-info" style="display: none;">
+                <span id="score-display">Blue: 0</span>
+                <span id="time-display">Time: 60</span>
+                <span id="enemy-score-display">Red: 0</span>
+            </div>
+            
+            <!-- Power meter -->
+            <div id="power-container" style="display: none;">
+                <span>⚡ Power: </span>
+                <div id="power-bar">
+                    <div id="power-fill"></div>
+                </div>
+                <span id="power-text">0%</span>
+            </div>
+            
+            <!-- This is the canvas where we draw the game -->
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas" width="500" height="600" style="display: none;"></canvas>
+            </div>
+            
+            <!-- Touch controls for mobile -->
+            <div id="touch-controls" style="display: none;">
+                <div id="dpad">
+                    <button id="up-btn" class="dpad-btn">⬆️</button>
+                    <div id="dpad-middle">
+                        <button id="left-btn" class="dpad-btn">⬅️</button>
+                        <button id="down-btn" class="dpad-btn">⬇️</button>
+                        <button id="right-btn" class="dpad-btn">➡️</button>
+                    </div>
+                </div>
+                <div id="action-buttons">
+                    <button id="kick-btn" class="action-btn">⚽ KICK</button>
+                    <button id="power-btn" class="action-btn power">⚡ POWER</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Instructions for the player -->
+        <p id="instructions">
+            <strong style="color: #3498db;">🔵 PLAYER 1 (Blue Team):</strong><br>
+            🎮 Use <strong>Arrow Keys</strong> to move | ⚽ <strong>SPACE</strong> to kick | ⚡ <strong>SHIFT+SPACE</strong> for POWER SHOT<br><br>
+            <strong style="color: #e74c3c;">🔴 PLAYER 2 (Red Team):</strong><br>
+            🎮 Use <strong>W A S D</strong> to move | ⚽ <strong>E</strong> to kick | ⚡ <strong>Q+E</strong> for POWER SHOT
+        </p>
+    </main>
+    
+    <!-- This connects our JavaScript file with the game code -->
+    <script src="game.js"></script>
+</body>
+</html>
