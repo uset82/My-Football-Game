@@ -1259,24 +1259,44 @@ var rightBtn = document.getElementById("right-btn");
 var kickBtn = document.getElementById("kick-btn");
 var powerBtn = document.getElementById("power-btn");
 
-// Helper function to add touch events
+// Helper function to add touch events with P2 support
 function addTouchEvents(button, keyName) {
     if (!button) return;
 
     button.addEventListener("touchstart", function (e) {
         e.preventDefault();
-        if (keyName === "up") upPressed = true;
-        if (keyName === "down") downPressed = true;
-        if (keyName === "left") leftPressed = true;
-        if (keyName === "right") rightPressed = true;
+        // If netRole is p2, set P2 variables; otherwise P1 variables
+        if (gameMode === "multi" && netRole === "p2") {
+            if (keyName === "up") p2UpPressed = true;
+            if (keyName === "down") p2DownPressed = true;
+            if (keyName === "left") p2LeftPressed = true;
+            if (keyName === "right") p2RightPressed = true;
+            emitInput("p2");
+        } else {
+            if (keyName === "up") upPressed = true;
+            if (keyName === "down") downPressed = true;
+            if (keyName === "left") leftPressed = true;
+            if (keyName === "right") rightPressed = true;
+            if (gameMode === "multi") emitInput("p1");
+        }
     });
 
     button.addEventListener("touchend", function (e) {
         e.preventDefault();
-        if (keyName === "up") upPressed = false;
-        if (keyName === "down") downPressed = false;
-        if (keyName === "left") leftPressed = false;
-        if (keyName === "right") rightPressed = false;
+        // If netRole is p2, set P2 variables; otherwise P1 variables
+        if (gameMode === "multi" && netRole === "p2") {
+            if (keyName === "up") p2UpPressed = false;
+            if (keyName === "down") p2DownPressed = false;
+            if (keyName === "left") p2LeftPressed = false;
+            if (keyName === "right") p2RightPressed = false;
+            emitInput("p2");
+        } else {
+            if (keyName === "up") upPressed = false;
+            if (keyName === "down") downPressed = false;
+            if (keyName === "left") leftPressed = false;
+            if (keyName === "right") rightPressed = false;
+            if (gameMode === "multi") emitInput("p1");
+        }
     });
 }
 
@@ -1286,40 +1306,75 @@ addTouchEvents(downBtn, "down");
 addTouchEvents(leftBtn, "left");
 addTouchEvents(rightBtn, "right");
 
-// Kick button touch events
+// Kick button touch events - supports P2
 if (kickBtn) {
     kickBtn.addEventListener("touchstart", function (e) {
         e.preventDefault();
-        kickBall(false);
+        // Kick for correct player based on netRole
+        if (gameMode === "multi" && netRole === "p2") {
+            kickBall(false, 2); // P2 normal kick
+        } else {
+            kickBall(false, 1); // P1 normal kick
+        }
         playSound("kick");
     });
 }
 
-// Power button touch events
+// Power button touch events - supports P2
 if (powerBtn) {
     var powerInterval = null;
 
     powerBtn.addEventListener("touchstart", function (e) {
         e.preventDefault();
-        isChargingPower = true;
-        // Start charging power
-        powerInterval = setInterval(function () {
-            if (powerLevel < maxPower) {
-                powerLevel += 3;
-                updatePowerBar();
-            }
-        }, 50);
+        // Charge power for correct player
+        if (gameMode === "multi" && netRole === "p2") {
+            player2ChargingPower = true;
+            powerInterval = setInterval(function () {
+                if (player2PowerLevel < maxPower) {
+                    player2PowerLevel += 3;
+                    // Update power bar for P2
+                    var powerFill = document.getElementById("power-fill");
+                    var powerText = document.getElementById("power-text");
+                    if (powerFill && powerText) {
+                        powerFill.style.width = player2PowerLevel + "%";
+                        powerText.textContent = Math.round(player2PowerLevel) + "%";
+                    }
+                }
+                emitInput("p2");
+            }, 50);
+        } else {
+            isChargingPower = true;
+            powerInterval = setInterval(function () {
+                if (powerLevel < maxPower) {
+                    powerLevel += 3;
+                    updatePowerBar();
+                }
+                if (gameMode === "multi") emitInput("p1");
+            }, 50);
+        }
     });
 
     powerBtn.addEventListener("touchend", function (e) {
         e.preventDefault();
         clearInterval(powerInterval);
-        if (powerLevel > 20) {
-            kickBall(true);
-            playSound("powerKick");
+        // Power kick for correct player
+        if (gameMode === "multi" && netRole === "p2") {
+            if (player2PowerLevel > 20) {
+                kickBall(true, 2);
+                playSound("powerKick");
+            }
+            player2PowerLevel = 0;
+            player2ChargingPower = false;
+            emitInput("p2");
+        } else {
+            if (powerLevel > 20) {
+                kickBall(true, 1);
+                playSound("powerKick");
+            }
+            powerLevel = 0;
+            isChargingPower = false;
+            if (gameMode === "multi") emitInput("p1");
         }
-        powerLevel = 0;
-        isChargingPower = false;
         updatePowerBar();
     });
 }
