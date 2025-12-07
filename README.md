@@ -57,6 +57,26 @@ Score as many goals as possible before the 60-second timer runs out!
 - You can also override per-session with a query param: `?ws=wss://your-app.onrender.com`.
 - The page will show a status banner when `WS_URL` is missing or when connection succeeds/fails.
 
+### 📱 QR Code Multiplayer (NEW!)
+Play with friends on separate devices:
+
+1. **Deploy the server** to Render (free):
+   - Go to [render.com](https://render.com) and create a new Web Service
+   - Connect your GitHub repo `https://github.com/uset82/My-Football-Game`
+   - Render will auto-detect `render.yaml` and deploy
+   - Copy your server URL (e.g., `wss://football-game-server.onrender.com`)
+
+2. **Configure Netlify**:
+   - Go to your Netlify site settings → Environment variables
+   - Add `WS_URL` = `wss://your-render-url.onrender.com`
+   - Redeploy
+
+3. **Play with a friend**:
+   - Open the game → tap "🌐 ONLINE (with Friend)"
+   - Tap "📱 CREATE ROOM" → QR code appears
+   - Friend scans QR with their phone camera
+   - Game starts automatically when both connected!
+
 ---
 
 ## 📁 Project Files

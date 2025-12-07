@@ -1,25 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>⚽ My Football Game</title>
-    
+
     <!-- This connects our CSS file for styling -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <main class="game-shell">
         <!-- This is our game title -->
         <h1>⚽ My Football Game ⚽</h1>
-        
+
         <!-- Game mode selector -->
         <div id="mode-selector">
             <p>Choose Game Mode:</p>
             <button id="single-btn" onclick="selectMode('single')">🎮 1 PLAYER (vs AI)</button>
-            <button id="multi-btn" onclick="selectMode('multi')">👥 2 PLAYERS (vs Friend)</button>
+            <button id="multi-btn" onclick="selectMode('multi')">👥 2 PLAYERS (Same Device)</button>
+            <button id="online-btn" onclick="selectMode('online')">🌐 ONLINE (with Friend)</button>
         </div>
-        
+
+        <!-- Room lobby for online multiplayer -->
+        <div id="room-lobby" style="display: none;">
+            <p>🌐 Online Multiplayer</p>
+            <button id="create-room-btn" onclick="createRoom()">📱 CREATE ROOM</button>
+            <button id="join-room-btn" onclick="showJoinRoom()">🔗 JOIN ROOM</button>
+            <button id="back-to-modes-btn" onclick="backToModes()">⬅️ BACK</button>
+        </div>
+
+        <!-- QR Code display for room host -->
+        <div id="qr-modal" style="display: none;">
+            <p>📱 Scan to Join!</p>
+            <div id="qr-code"></div>
+            <p id="room-code-display">Room: ------</p>
+            <p id="room-url-display" style="font-size: 12px; word-break: break-all;"></p>
+            <p id="waiting-text">⏳ Waiting for Player 2...</p>
+            <button id="copy-link-btn" onclick="copyRoomLink()">📋 Copy Link</button>
+            <button id="cancel-room-btn" onclick="cancelRoom()">❌ Cancel</button>
+        </div>
+
+        <!-- Join room input -->
+        <div id="join-modal" style="display: none;">
+            <p>🔗 Enter Room Code</p>
+            <input type="text" id="room-code-input" placeholder="ABC123" maxlength="6"
+                style="text-transform: uppercase;">
+            <button id="join-btn" onclick="joinRoom()">✅ JOIN</button>
+            <button id="cancel-join-btn" onclick="cancelJoin()">⬅️ BACK</button>
+        </div>
+
         <!-- Difficulty selector (only shows before game starts) -->
         <div id="difficulty-selector" style="display: none;">
             <p>Choose Difficulty:</p>
@@ -27,7 +58,7 @@
             <button id="medium-btn" onclick="startGame('medium')">🟡 MEDIUM</button>
             <button id="hard-btn" onclick="startGame('hard')">🔴 HARD</button>
         </div>
-        
+
         <div class="game-area">
             <!-- This is where we show the score and time -->
             <div id="game-info" style="display: none;">
@@ -35,8 +66,8 @@
                 <span id="time-display">Time: 60</span>
                 <span id="enemy-score-display">Red: 0</span>
             </div>
-        <div id="net-status" style="display: none;"></div>
-            
+            <div id="net-status" style="display: none;"></div>
+
             <!-- Power meter -->
             <div id="power-container" style="display: none;">
                 <span>⚡ Power: </span>
@@ -45,12 +76,12 @@
                 </div>
                 <span id="power-text">0%</span>
             </div>
-            
+
             <!-- This is the canvas where we draw the game -->
             <div class="canvas-wrapper">
                 <canvas id="gameCanvas" width="500" height="600" style="display: none;"></canvas>
             </div>
-            
+
             <!-- Touch controls for mobile -->
             <div id="touch-controls" class="nes-controller" style="display: none;">
                 <div id="dpad">
@@ -67,19 +98,22 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Instructions for the player -->
         <p id="instructions">
             <strong style="color: #3498db;">🔵 PLAYER 1 (Blue Team):</strong><br>
-            🎮 Use <strong>Arrow Keys</strong> to move | ⚽ <strong>SPACE</strong> to kick | ⚡ <strong>SHIFT+SPACE</strong> for POWER SHOT<br><br>
+            🎮 Use <strong>Arrow Keys</strong> to move | ⚽ <strong>SPACE</strong> to kick | ⚡
+            <strong>SHIFT+SPACE</strong> for POWER SHOT<br><br>
             <strong style="color: #e74c3c;">🔴 PLAYER 2 (Red Team):</strong><br>
-            🎮 Use <strong>W A S D</strong> to move | ⚽ <strong>E</strong> to kick | ⚡ <strong>Q+E</strong> for POWER SHOT
+            🎮 Use <strong>W A S D</strong> to move | ⚽ <strong>E</strong> to kick | ⚡ <strong>Q+E</strong> for POWER
+            SHOT
         </p>
     </main>
-    
-    <!-- This connects our JavaScript file with the game code -->
+
     <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
     <script src="game.js"></script>
 </body>
+
 </html>

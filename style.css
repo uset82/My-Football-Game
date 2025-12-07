@@ -477,3 +477,212 @@ button {
         box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), 0 5px 0 rgba(0, 0, 0, 0.6);
     }
 }
+
+/* ===================================
+   ONLINE MULTIPLAYER / QR CODE STYLES
+   =================================== */
+
+#online-btn {
+    background: linear-gradient(135deg, #06d6a0, #118ab2);
+    color: white;
+}
+
+/* Room lobby styles */
+#room-lobby {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#room-lobby p {
+    font-size: 24px;
+    margin: 0 0 10px 0;
+    color: #06d6a0;
+}
+
+#room-lobby button {
+    font-size: 18px;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.1s, box-shadow 0.1s;
+    min-width: 220px;
+    width: min(100%, 320px);
+}
+
+#room-lobby button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(6, 214, 160, 0.4);
+}
+
+#create-room-btn {
+    background: linear-gradient(135deg, #06d6a0, #05b384);
+    color: white;
+}
+
+#join-room-btn {
+    background: linear-gradient(135deg, #118ab2, #0d6e8a);
+    color: white;
+}
+
+#back-to-modes-btn {
+    background: linear-gradient(135deg, #555, #444);
+    color: white;
+    font-size: 14px !important;
+    padding: 10px 20px !important;
+}
+
+/* QR Modal styles */
+#qr-modal {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    background: linear-gradient(145deg, rgba(6, 214, 160, 0.1), rgba(17, 138, 178, 0.1));
+    border-radius: 20px;
+    border: 2px solid #06d6a0;
+    box-shadow: 0 0 30px rgba(6, 214, 160, 0.2);
+}
+
+#qr-modal p {
+    margin: 0;
+    font-size: 20px;
+    color: #ffd700;
+}
+
+#qr-code {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#qr-code canvas {
+    display: block;
+}
+
+#room-code-display {
+    font-size: 28px !important;
+    font-weight: bold;
+    color: #06d6a0 !important;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 4px;
+}
+
+#room-url-display {
+    color: #888 !important;
+    max-width: 280px;
+}
+
+#waiting-text {
+    color: #ffd166 !important;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+#qr-modal button {
+    font-size: 16px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.1s;
+    min-width: 160px;
+}
+
+#copy-link-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+#cancel-room-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+/* Join Modal styles */
+#join-modal {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(145deg, rgba(17, 138, 178, 0.1), rgba(6, 214, 160, 0.1));
+    border-radius: 20px;
+    border: 2px solid #118ab2;
+}
+
+#join-modal p {
+    margin: 0;
+    font-size: 22px;
+    color: #118ab2;
+}
+
+#room-code-input {
+    font-size: 32px;
+    padding: 16px 24px;
+    text-align: center;
+    border: 3px solid #118ab2;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #06d6a0;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 8px;
+    width: 180px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#room-code-input:focus {
+    border-color: #06d6a0;
+    box-shadow: 0 0 20px rgba(6, 214, 160, 0.3);
+}
+
+#room-code-input::placeholder {
+    color: #555;
+    letter-spacing: 4px;
+}
+
+#join-modal button {
+    font-size: 18px;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.1s;
+    min-width: 140px;
+}
+
+#join-btn {
+    background: linear-gradient(135deg, #06d6a0, #05b384);
+    color: white;
+}
+
+#cancel-join-btn {
+    background: linear-gradient(135deg, #555, #444);
+    color: white;
+}
+
+/* Connected status styling */
+.connected-status {
+    color: #06d6a0 !important;
+    font-weight: bold;
+}
+

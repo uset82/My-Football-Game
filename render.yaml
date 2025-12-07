@@ -1,0 +1,13 @@
+# Render deployment configuration for My Football Game multiplayer server
+# Deploy: Connect this repo to Render and it will auto-deploy
+
+services:
+  - type: web
+    name: football-game-server
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+    healthCheckPath: /
