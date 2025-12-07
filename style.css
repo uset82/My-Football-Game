@@ -266,26 +266,28 @@ h1 {
     justify-content: space-between;
     align-items: center;
     margin-top: 15px;
-    padding: 16px 18px;
+    padding: 18px 20px;
     gap: 18px;
     flex-wrap: wrap;
     width: 100%;
     max-width: 880px;
-    background: linear-gradient(180deg, #2f2f2f, #1c1c1c);
-    border: 3px solid #3b3b3b;
-    border-radius: 18px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 24px rgba(0, 0, 0, 0.35);
+    background: linear-gradient(135deg, rgba(34, 34, 34, 0.82), rgba(20, 20, 20, 0.92));
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
 
 #dpad {
     display: grid;
-    grid-template-columns: repeat(3, minmax(52px, 68px));
-    grid-template-rows: repeat(3, minmax(52px, 68px));
-    gap: 6px;
+    grid-template-columns: repeat(3, minmax(52px, 70px));
+    grid-template-rows: repeat(3, minmax(52px, 70px));
+    gap: 8px;
     align-items: center;
     justify-items: center;
     flex: 1;
-    max-width: 220px;
+    max-width: 240px;
 }
 
 #dpad-middle {
@@ -301,69 +303,87 @@ h1 {
     width: 100%;
     height: 100%;
     font-size: 22px;
-    border: 1px solid #555;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
-    color: #e9e9e9;
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08), 0 3px 0 #111;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: linear-gradient(145deg, #3b3f4a, #1f222b);
+    color: #eaf6ff;
+    box-shadow:
+        inset 0 2px 3px rgba(255, 255, 255, 0.06),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.45),
+        0 6px 12px rgba(0, 0, 0, 0.35);
     cursor: pointer;
-    user-select: none;
     -webkit-user-select: none;
+    user-select: none;
     touch-action: manipulation;
 }
 
 .dpad-btn:active {
-    background: linear-gradient(135deg, #2a2a2a, #1f1f1f);
+    background: linear-gradient(145deg, #2e3038, #17191f);
     transform: translateY(1px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 0 #0d0d0d;
+    box-shadow:
+        inset 0 2px 2px rgba(255, 255, 255, 0.05),
+        inset 0 -2px 3px rgba(0, 0, 0, 0.4),
+        0 4px 8px rgba(0, 0, 0, 0.28);
 }
 
 #action-buttons {
     display: flex;
     flex-direction: row;
-    gap: 14px;
+    gap: 16px;
     align-items: center;
     justify-content: flex-end;
     flex: 1;
-    max-width: 280px;
+    max-width: 320px;
 }
 
 .action-btn {
-    width: clamp(68px, 16vw, 86px);
-    height: clamp(68px, 16vw, 86px);
+    width: clamp(72px, 17vw, 92px);
+    height: clamp(72px, 17vw, 92px);
     font-size: 14px;
     font-weight: 800;
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    user-select: none;
     -webkit-user-select: none;
+    user-select: none;
     touch-action: manipulation;
     color: #fff;
-    letter-spacing: 0.4px;
-    box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.15), 0 7px 0 #5a0b0b, 0 12px 18px rgba(0,0,0,0.35);
+    letter-spacing: 0.5px;
+    box-shadow:
+        inset 0 4px 0 rgba(255, 255, 255, 0.15),
+        0 10px 0 rgba(0, 0, 0, 0.35),
+        0 18px 28px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
 }
 
 #kick-btn {
-    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.25) 0 22%, transparent 24%), linear-gradient(145deg, #ff6b6b, #c53030);
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35) 0 22%, transparent 24%), linear-gradient(145deg, #ff5f6d, #e53935);
 }
 
 #kick-btn:active {
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), 0 5px 0 #5a0b0b;
+    box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.12),
+        0 6px 0 rgba(0, 0, 0, 0.35),
+        0 12px 18px rgba(0, 0, 0, 0.25);
     transform: translateY(1px);
 }
 
 .action-btn.power {
-    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.25) 0 22%, transparent 24%), linear-gradient(145deg, #f0a6ff, #9b59b6);
-    box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.15), 0 7px 0 #5a0b63, 0 12px 18px rgba(0,0,0,0.35);
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35) 0 22%, transparent 24%), linear-gradient(145deg, #c77dff, #7c4dff);
+    box-shadow:
+        inset 0 4px 0 rgba(255, 255, 255, 0.15),
+        0 10px 0 rgba(84, 36, 143, 0.6),
+        0 18px 28px rgba(0, 0, 0, 0.3);
 }
 
 .action-btn.power:active {
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), 0 5px 0 #4c2c53;
+    box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.12),
+        0 6px 0 rgba(84, 36, 143, 0.6),
+        0 12px 18px rgba(0, 0, 0, 0.25);
     transform: translateY(1px);
 }
 
