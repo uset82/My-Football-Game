@@ -44,6 +44,19 @@ Score as many goals as possible before the 60-second timer runs out!
 2. Run: `python -m http.server 8080`
 3. Open [http://localhost:8080](http://localhost:8080) in your browser
 
+### Option 4: Online Multiplayer Server (socket.io)
+1. Install deps: `npm install`
+2. Run server locally: `node server.js` (defaults to port 3000)
+3. Set `WS_URL` to your server, e.g. `ws://localhost:3000` for local or `wss://your-app.onrender.com` when deployed.
+4. Open the Netlify site with the WS URL if you want to override per session: `https://poetic-faun-843df2.netlify.app/?ws=ws://localhost:3000&room=testroom`
+5. First player to connect becomes P1 (blue host), second is P2 (red). Host simulates and syncs state; both send inputs.
+
+### Online multiplayer server URL
+- Set env var `WS_URL` to your WebSocket endpoint (e.g., `wss://your-app.onrender.com`).
+- On Netlify: Site settings → Build & deploy → Environment → Environment variables → add `WS_URL`, then redeploy.
+- You can also override per-session with a query param: `?ws=wss://your-app.onrender.com`.
+- The page will show a status banner when `WS_URL` is missing or when connection succeeds/fails.
+
 ---
 
 ## 📁 Project Files

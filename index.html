@@ -35,6 +35,7 @@
                 <span id="time-display">Time: 60</span>
                 <span id="enemy-score-display">Red: 0</span>
             </div>
+        <div id="net-status" style="display: none;"></div>
             
             <!-- Power meter -->
             <div id="power-container" style="display: none;">
@@ -77,6 +78,8 @@
     </main>
     
     <!-- This connects our JavaScript file with the game code -->
+    <script src="config.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
     <script src="game.js"></script>
 </body>
 </html>

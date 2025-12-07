@@ -185,6 +185,16 @@ h1 {
     color: #ff6347;
 }
 
+#net-status {
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    max-width: 720px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
 /* Power bar container */
 #power-container {
     margin: 10px 0;

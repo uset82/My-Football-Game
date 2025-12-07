@@ -181,6 +181,283 @@ function playCrowdCheer() {
 var difficulty = "medium";  // Default difficulty
 var gameStarted = false;    // Has the game started?
 var gameMode = "single";    // "single" or "multi" player mode
+var timerHandle = null;     // Countdown interval handle
+
+// ===================================
+// MULTIPLAYER NETWORK CONFIG (WS_URL)
+// ===================================
+var netStatusEl = document.getElementById("net-status");
+var netRole = "solo"; // "p1", "p2", or "solo"
+var roomId = resolveRoomId();
+var wsConnection = null;
+var resolvedWsUrl = resolveWsUrl();
+var stateSyncInterval = null;
+
+function resolveRoomId() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get("room") || "public";
+}
+
+function setNetStatus(message, color) {
+    if (!netStatusEl) return;
+    netStatusEl.style.display = "block";
+    netStatusEl.style.color = color || "#ffffff";
+    netStatusEl.textContent = message;
+}
+
+function resolveWsUrl() {
+    // Priority: query param ?ws=..., then global window.WS_URL, then localStorage
+    var params = new URLSearchParams(window.location.search);
+    var fromQuery = params.get("ws");
+    var fromGlobal = typeof window !== "undefined" ? window.WS_URL : null;
+    var fromStorage = null;
+    try {
+        fromStorage = localStorage.getItem("WS_URL");
+    } catch (e) {
+        fromStorage = null;
+    }
+    var url = fromQuery || fromGlobal || fromStorage || null;
+    if (url) {
+        try {
+            localStorage.setItem("WS_URL", url);
+        } catch (e2) {
+            // ignore storage errors
+        }
+    }
+    return url;
+}
+
+function isHost() {
+    return gameMode === "multi" && netRole === "p1";
+}
+
+function connectMultiplayerSocket() {
+    if (wsConnection || gameMode !== "multi") return;
+    if (!resolvedWsUrl) {
+        setNetStatus("Online multiplayer server not configured. Set WS_URL or add ?ws=wss://your-server", "#ffd166");
+        return;
+    }
+    if (typeof io === "undefined") {
+        setNetStatus("socket.io client missing; cannot connect.", "#ff6347");
+        return;
+    }
+    try {
+        setNetStatus("Connecting to " + resolvedWsUrl + "...", "#ffd166");
+        wsConnection = io(resolvedWsUrl, {
+            transports: ["websocket"],
+            query: { room: roomId }
+        });
+        wsConnection.on("connect", function() {
+            setNetStatus("Connected to multiplayer server: " + resolvedWsUrl, "#06d6a0");
+        });
+        wsConnection.on("disconnect", function() {
+            setNetStatus("Disconnected from server. Check WS_URL.", "#ff6347");
+            wsConnection = null;
+            stopStateSync();
+        });
+        wsConnection.on("connect_error", function(err) {
+            setNetStatus("WebSocket error: " + err.message, "#ff6347");
+        });
+        wsConnection.on("joined", function(payload) {
+            netRole = payload.role || "solo";
+            roomId = payload.room || roomId;
+            setNetStatus("Room " + roomId + " | You are " + netRole.toUpperCase(), "#06d6a0");
+        });
+        wsConnection.on("input", function(payload) {
+            applyRemoteInput(payload);
+        });
+        wsConnection.on("state", function(payload) {
+            applyRemoteState(payload);
+        });
+        wsConnection.on("start", function(payload) {
+            startGame(payload.difficulty || "medium", { fromNetwork: true, timeLeft: payload.timeLeft });
+        });
+    } catch (err) {
+        setNetStatus("Failed to connect: " + err.message, "#ff6347");
+    }
+}
+
+function emitInput(role) {
+    if (!wsConnection || wsConnection.disconnected || gameMode !== "multi") return;
+    if (role === "p1") {
+        wsConnection.emit("input", {
+            role: "p1",
+            room: roomId,
+            keys: {
+                leftPressed: leftPressed,
+                rightPressed: rightPressed,
+                upPressed: upPressed,
+                downPressed: downPressed,
+                isChargingPower: isChargingPower,
+                powerLevel: powerLevel
+            }
+        });
+    } else if (role === "p2") {
+        wsConnection.emit("input", {
+            role: "p2",
+            room: roomId,
+            keys: {
+                leftPressed: p2LeftPressed,
+                rightPressed: p2RightPressed,
+                upPressed: p2UpPressed,
+                downPressed: p2DownPressed,
+                isChargingPower: player2ChargingPower,
+                powerLevel: player2PowerLevel
+            }
+        });
+    }
+}
+
+function applyRemoteInput(payload) {
+    if (!payload || !payload.role || payload.role === netRole) return;
+    if (payload.role === "p1") {
+        leftPressed = !!payload.keys.leftPressed;
+        rightPressed = !!payload.keys.rightPressed;
+        upPressed = !!payload.keys.upPressed;
+        downPressed = !!payload.keys.downPressed;
+        isChargingPower = !!payload.keys.isChargingPower;
+        powerLevel = payload.keys.powerLevel || 0;
+    } else if (payload.role === "p2") {
+        p2LeftPressed = !!payload.keys.leftPressed;
+        p2RightPressed = !!payload.keys.rightPressed;
+        p2UpPressed = !!payload.keys.upPressed;
+        p2DownPressed = !!payload.keys.downPressed;
+        player2ChargingPower = !!payload.keys.isChargingPower;
+        player2PowerLevel = payload.keys.powerLevel || 0;
+    }
+}
+
+function startStateSync() {
+    if (!isHost() || !wsConnection || stateSyncInterval) return;
+    stateSyncInterval = setInterval(function() {
+        if (!wsConnection || wsConnection.disconnected) return;
+        wsConnection.emit("state", {
+            room: roomId,
+            data: snapshotState()
+        });
+    }, 120);
+}
+
+function stopStateSync() {
+    if (stateSyncInterval) {
+        clearInterval(stateSyncInterval);
+        stateSyncInterval = null;
+    }
+}
+
+function snapshotState() {
+    return {
+        playerX: playerX,
+        playerY: playerY,
+        player2X: player2X,
+        player2Y: player2Y,
+        ballX: ballX,
+        ballY: ballY,
+        ballSpeedX: ballSpeedX,
+        ballSpeedY: ballSpeedY,
+        ballSpin: ballSpin,
+        ballRotation: ballRotation,
+        ballHeight: ballHeight,
+        ballHeightVel: ballHeightVel,
+        score: score,
+        enemyScore: enemyScore,
+        timeLeft: timeLeft,
+        gameOver: gameOver,
+        weatherType: weatherType,
+        windStrength: windStrength
+    };
+}
+
+function applyRemoteState(payload) {
+    if (!payload || isHost()) return; // host is authoritative
+    var s = payload.data || payload;
+    playerX = s.playerX;
+    playerY = s.playerY;
+    player2X = s.player2X;
+    player2Y = s.player2Y;
+    ballX = s.ballX;
+    ballY = s.ballY;
+    ballSpeedX = s.ballSpeedX;
+    ballSpeedY = s.ballSpeedY;
+    ballSpin = s.ballSpin;
+    ballRotation = s.ballRotation;
+    ballHeight = s.ballHeight;
+    ballHeightVel = s.ballHeightVel;
+    score = s.score;
+    enemyScore = s.enemyScore;
+    timeLeft = s.timeLeft;
+    gameOver = s.gameOver;
+    weatherType = s.weatherType || weatherType;
+    windStrength = s.windStrength || windStrength;
+    
+    // Update UI text to match host state
+    if (gameMode === "multi") {
+        document.getElementById("score-display").textContent = "Blue (P1): " + score;
+        document.getElementById("enemy-score-display").textContent = "Red (P2): " + enemyScore;
+    }
+    document.getElementById("time-display").textContent = "Time: " + timeLeft;
+}
+
+// ===================================
+// MULTIPLAYER NETWORK CONFIG (WS_URL)
+// ===================================
+var netStatusEl = document.getElementById("net-status");
+var wsConnection = null;
+var resolvedWsUrl = resolveWsUrl();
+
+function setNetStatus(message, color) {
+    if (!netStatusEl) return;
+    netStatusEl.style.display = "block";
+    netStatusEl.style.color = color || "#ffffff";
+    netStatusEl.textContent = message;
+}
+
+function resolveWsUrl() {
+    // Priority: query param ?ws=..., then global window.WS_URL, then localStorage
+    var params = new URLSearchParams(window.location.search);
+    var fromQuery = params.get("ws");
+    var fromGlobal = typeof window !== "undefined" ? window.WS_URL : null;
+    var fromStorage = null;
+    try {
+        fromStorage = localStorage.getItem("WS_URL");
+    } catch (e) {
+        fromStorage = null;
+    }
+    var url = fromQuery || fromGlobal || fromStorage || null;
+    if (url) {
+        try {
+            localStorage.setItem("WS_URL", url);
+        } catch (e2) {
+            // ignore storage errors
+        }
+    }
+    return url;
+}
+
+function connectMultiplayerSocket() {
+    if (wsConnection || gameMode !== "multi") return;
+    if (!resolvedWsUrl) {
+        setNetStatus("Online multiplayer server not configured. Set WS_URL or add ?ws=wss://your-server", "#ffd166");
+        return;
+    }
+    try {
+        setNetStatus("Connecting to " + resolvedWsUrl + "...", "#ffd166");
+        wsConnection = new WebSocket(resolvedWsUrl);
+        wsConnection.onopen = function() {
+            setNetStatus("Connected to multiplayer server: " + resolvedWsUrl, "#06d6a0");
+        };
+        wsConnection.onclose = function() {
+            setNetStatus("Disconnected from server. Check WS_URL.", "#ff6347");
+            wsConnection = null;
+        };
+        wsConnection.onerror = function() {
+            setNetStatus("WebSocket error. Verify WS_URL.", "#ff6347");
+        };
+        // NOTE: Actual gameplay sync not implemented yet.
+    } catch (err) {
+        setNetStatus("Failed to connect: " + err.message, "#ff6347");
+    }
+}
 
 // ===================================
 // PLAYER 2 VARIABLES (for multiplayer)
@@ -237,6 +514,7 @@ function selectMode(mode) {
         document.getElementById("difficulty-selector").style.display = "block";
     } else {
         // Start multiplayer game directly (medium difficulty)
+        connectMultiplayerSocket();
         startGame("medium");
     }
 }
@@ -245,9 +523,16 @@ function selectMode(mode) {
 window.selectMode = selectMode;
 
 // Function to start the game with chosen difficulty
-function startGame(chosenDifficulty) {
+function startGame(chosenDifficulty, options) {
+    var isRemote = options && options.fromNetwork;
+    var providedTime = options && typeof options.timeLeft === "number" ? options.timeLeft : null;
+    
     difficulty = chosenDifficulty;
     gameStarted = true;
+    
+    if (gameMode === "multi") {
+        connectMultiplayerSocket();
+    }
     
     // Initialize weather
     initializeWeather();
@@ -256,7 +541,7 @@ function startGame(chosenDifficulty) {
     var settings = difficultySettings[difficulty];
     playerSpeed = settings.playerSpeed;
     goalkeeperSpeed = settings.goalkeeperSpeed;
-    timeLeft = settings.timeLimit;
+    timeLeft = providedTime !== null ? providedTime : settings.timeLimit;
     
     // Update enemy speeds
     for (var i = 0; i < enemies.length; i++) {
@@ -278,15 +563,29 @@ function startGame(chosenDifficulty) {
     if (gameMode === "multi") {
         document.getElementById("score-display").textContent = "Blue (P1): 0";
         document.getElementById("enemy-score-display").textContent = "Red (P2): 0";
-        // Set longer time for multiplayer matches
-        timeLeft = 120;  // 2 minutes for multiplayer
+        // Set longer time for multiplayer matches unless remote provided time
+        if (providedTime === null) {
+            timeLeft = 120;  // 2 minutes for multiplayer
+        }
     }
     
     // Update time display
     document.getElementById("time-display").textContent = "Time: " + timeLeft;
     
     // Start the timer
-    setInterval(countDown, 1000);
+    if (!timerHandle) {
+        timerHandle = setInterval(countDown, 1000);
+    }
+    
+    // Broadcast start to other player if host
+    if (!isRemote && gameMode === "multi" && isHost() && wsConnection && !wsConnection.disconnected) {
+        wsConnection.emit("start", { room: roomId, difficulty: difficulty, timeLeft: timeLeft });
+    }
+    
+    // Begin state sync if host
+    if (gameMode === "multi" && isHost()) {
+        startStateSync();
+    }
     
     // Start game loop
     gameLoop();
@@ -636,64 +935,67 @@ var downPressed = false;
 document.addEventListener("keydown", function(event) {
     // ===== PLAYER 1 CONTROLS (Arrow Keys + Space) =====
     // Check which key was pressed
-    if (event.key === "ArrowLeft") {
+    if (gameMode !== "multi" || netRole !== "p2") {
+        if (event.key === "ArrowLeft") {
         leftPressed = true;
     }
-    if (event.key === "ArrowRight") {
+        if (event.key === "ArrowRight") {
         rightPressed = true;
     }
-    if (event.key === "ArrowUp") {
+        if (event.key === "ArrowUp") {
         upPressed = true;
     }
-    if (event.key === "ArrowDown") {
+        if (event.key === "ArrowDown") {
         downPressed = true;
     }
     
-    // Check if SHIFT is held (for charging power)
-    if (event.key === "Shift") {
-        isChargingPower = true;
-    }
-    
-    // Check if SPACE was pressed to kick the ball
-    if (event.key === " ") {
-        event.preventDefault();  // Prevent page scroll
-        if (isChargingPower && powerLevel > 20) {
-            // POWER KICK!
-            kickBall(true, 1);  // Player 1 kick
-            playSound("powerKick");
-        } else {
-            // Normal kick
-            kickBall(false, 1);  // Player 1 kick
-            playSound("kick");
+        // Check if SHIFT is held (for charging power)
+        if (event.key === "Shift") {
+            isChargingPower = true;
         }
-        // Reset power after kicking
-        powerLevel = 0;
-        isChargingPower = false;
-        updatePowerBar();
+        
+        // Check if SPACE was pressed to kick the ball
+        if (event.key === " ") {
+            event.preventDefault();  // Prevent page scroll
+            if (isChargingPower && powerLevel > 20) {
+                // POWER KICK!
+                kickBall(true, 1);  // Player 1 kick
+                playSound("powerKick");
+            } else {
+                // Normal kick
+                kickBall(false, 1);  // Player 1 kick
+                playSound("kick");
+            }
+            // Reset power after kicking
+            powerLevel = 0;
+            isChargingPower = false;
+            updatePowerBar();
+        }
+        if (gameMode === "multi") emitInput("p1");
     }
     
     // ===== PLAYER 2 CONTROLS (WASD + E) =====
     if (gameMode === "multi") {
-        if (event.key === "a" || event.key === "A") {
+        if (netRole !== "p1" && (event.key === "a" || event.key === "A")) {
             p2LeftPressed = true;
         }
-        if (event.key === "d" || event.key === "D") {
+        if (netRole !== "p1" && (event.key === "d" || event.key === "D")) {
             p2RightPressed = true;
         }
-        if (event.key === "w" || event.key === "W") {
+        if (netRole !== "p1" && (event.key === "w" || event.key === "W")) {
             p2UpPressed = true;
         }
-        if (event.key === "s" || event.key === "S") {
+        if (netRole !== "p1" && (event.key === "s" || event.key === "S")) {
             p2DownPressed = true;
         }
         
         // Q for charging power (Player 2)
-        if (event.key === "q" || event.key === "Q") {
+        if (netRole !== "p1" && (event.key === "q" || event.key === "Q")) {
             player2ChargingPower = true;
         }
         
         // E for kicking (Player 2)
-        if (event.key === "e" || event.key === "E") {
+        if (netRole !== "p1" && (event.key === "e" || event.key === "E")) {
             if (player2ChargingPower && player2PowerLevel > 20) {
                 kickBall(true, 2);  // Player 2 power kick
                 playSound("powerKick");
@@ -704,6 +1006,7 @@ document.addEventListener("keydown", function(event) {
             player2PowerLevel = 0;
             player2ChargingPower = false;
         }
+        if (gameMode === "multi") emitInput("p2");
     }
 });
 
@@ -711,41 +1014,45 @@ document.addEventListener("keydown", function(event) {
 document.addEventListener("keyup", function(event) {
     // ===== PLAYER 1 KEY RELEASE =====
     // Check which key was released
-    if (event.key === "ArrowLeft") {
+    if (gameMode !== "multi" || netRole !== "p2") {
+        if (event.key === "ArrowLeft") {
         leftPressed = false;
     }
-    if (event.key === "ArrowRight") {
+        if (event.key === "ArrowRight") {
         rightPressed = false;
     }
-    if (event.key === "ArrowUp") {
+        if (event.key === "ArrowUp") {
         upPressed = false;
     }
-    if (event.key === "ArrowDown") {
+        if (event.key === "ArrowDown") {
         downPressed = false;
     }
     
-    // Stop charging power when shift released
-    if (event.key === "Shift") {
-        isChargingPower = false;
+        // Stop charging power when shift released
+        if (event.key === "Shift") {
+            isChargingPower = false;
+        }
+        if (gameMode === "multi") emitInput("p1");
     }
     
     // ===== PLAYER 2 KEY RELEASE =====
     if (gameMode === "multi") {
-        if (event.key === "a" || event.key === "A") {
+        if (netRole !== "p1" && (event.key === "a" || event.key === "A")) {
             p2LeftPressed = false;
         }
-        if (event.key === "d" || event.key === "D") {
+        if (netRole !== "p1" && (event.key === "d" || event.key === "D")) {
             p2RightPressed = false;
         }
-        if (event.key === "w" || event.key === "W") {
+        if (netRole !== "p1" && (event.key === "w" || event.key === "W")) {
             p2UpPressed = false;
         }
-        if (event.key === "s" || event.key === "S") {
+        if (netRole !== "p1" && (event.key === "s" || event.key === "S")) {
             p2DownPressed = false;
         }
-        if (event.key === "q" || event.key === "Q") {
+        if (netRole !== "p1" && (event.key === "q" || event.key === "Q")) {
             player2ChargingPower = false;
         }
+        if (gameMode === "multi") emitInput("p2");
     }
 });
 
@@ -2710,8 +3017,9 @@ function gameLoop() {
     pencil.save();
     pencil.translate(cameraShakeX, cameraShakeY);
     
+    var hostSimulates = !(gameMode === "multi" && !isHost());
     // Only update the game if it's not over
-    if (!gameOver) {
+    if (!gameOver && hostSimulates) {
         // Move everything
         movePlayer();
         movePlayer2();  // Player 2 movement (multiplayer only)
@@ -2803,6 +3111,9 @@ function gameLoop() {
 function countDown() {
     // Only count down if the game is not over
     if (!gameOver && gameStarted) {
+        if (gameMode === "multi" && !isHost()) {
+            return; // host controls the clock
+        }
         // Subtract one second
         timeLeft = timeLeft - 1;
         

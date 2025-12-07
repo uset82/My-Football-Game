@@ -1,0 +1,13 @@
+{
+  "name": "my-football-game-multiplayer",
+  "version": "1.0.0",
+  "description": "Socket.io relay server for My Football Game online multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.5"
+  }
+}
+
