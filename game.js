@@ -511,25 +511,23 @@ function createRoom() {
     document.getElementById("waiting-text").textContent = "⏳ Waiting for Player 2...";
     document.getElementById("waiting-text").className = "";
 
-    // Generate QR code
+    // Generate QR code using QRious
     var qrContainer = document.getElementById("qr-code");
     qrContainer.innerHTML = ""; // Clear previous QR
 
-    if (typeof QRCode !== "undefined") {
-        QRCode.toCanvas(currentRoomUrl, {
-            width: 200,
-            margin: 2,
-            color: { dark: "#000000", light: "#ffffff" }
-        }, function (error, canvas) {
-            if (error) {
-                console.error("QR Code error:", error);
-                qrContainer.innerHTML = "<p style='color: #ff6347;'>QR Error. Use link below.</p>";
-            } else {
-                qrContainer.appendChild(canvas);
-            }
+    if (typeof QRious !== "undefined") {
+        var canvas = document.createElement("canvas");
+        var qr = new QRious({
+            element: canvas,
+            value: currentRoomUrl,
+            size: 200,
+            level: "M",
+            background: "#ffffff",
+            foreground: "#000000"
         });
+        qrContainer.appendChild(canvas);
     } else {
-        qrContainer.innerHTML = "<p style='color: #ffd166;'>QR library loading...</p>";
+        qrContainer.innerHTML = "<p style='color: #ffd166;'>QR library loading... Refresh page.</p>";
     }
 
     // Connect to multiplayer server
