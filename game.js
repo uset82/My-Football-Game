@@ -192,6 +192,7 @@ var roomId = resolveRoomId();
 var wsConnection = null;
 var resolvedWsUrl = resolveWsUrl();
 var stateSyncInterval = null;
+var pendingStart = null;
 
 function resolveRoomId() {
     var params = new URLSearchParams(window.location.search);
@@ -262,6 +263,11 @@ function connectMultiplayerSocket() {
             netRole = payload.role || "solo";
             roomId = payload.room || roomId;
             setNetStatus("Room " + roomId + " | You are " + netRole.toUpperCase(), "#06d6a0");
+            if (pendingStart && netRole === "p1") {
+                var ps = pendingStart;
+                pendingStart = null;
+                startGame(ps.difficulty, ps.options);
+            }
         });
         wsConnection.on("input", function(payload) {
             applyRemoteInput(payload);
@@ -399,67 +405,6 @@ function applyRemoteState(payload) {
 }
 
 // ===================================
-// MULTIPLAYER NETWORK CONFIG (WS_URL)
-// ===================================
-var netStatusEl = document.getElementById("net-status");
-var wsConnection = null;
-var resolvedWsUrl = resolveWsUrl();
-
-function setNetStatus(message, color) {
-    if (!netStatusEl) return;
-    netStatusEl.style.display = "block";
-    netStatusEl.style.color = color || "#ffffff";
-    netStatusEl.textContent = message;
-}
-
-function resolveWsUrl() {
-    // Priority: query param ?ws=..., then global window.WS_URL, then localStorage
-    var params = new URLSearchParams(window.location.search);
-    var fromQuery = params.get("ws");
-    var fromGlobal = typeof window !== "undefined" ? window.WS_URL : null;
-    var fromStorage = null;
-    try {
-        fromStorage = localStorage.getItem("WS_URL");
-    } catch (e) {
-        fromStorage = null;
-    }
-    var url = fromQuery || fromGlobal || fromStorage || null;
-    if (url) {
-        try {
-            localStorage.setItem("WS_URL", url);
-        } catch (e2) {
-            // ignore storage errors
-        }
-    }
-    return url;
-}
-
-function connectMultiplayerSocket() {
-    if (wsConnection || gameMode !== "multi") return;
-    if (!resolvedWsUrl) {
-        setNetStatus("Online multiplayer server not configured. Set WS_URL or add ?ws=wss://your-server", "#ffd166");
-        return;
-    }
-    try {
-        setNetStatus("Connecting to " + resolvedWsUrl + "...", "#ffd166");
-        wsConnection = new WebSocket(resolvedWsUrl);
-        wsConnection.onopen = function() {
-            setNetStatus("Connected to multiplayer server: " + resolvedWsUrl, "#06d6a0");
-        };
-        wsConnection.onclose = function() {
-            setNetStatus("Disconnected from server. Check WS_URL.", "#ff6347");
-            wsConnection = null;
-        };
-        wsConnection.onerror = function() {
-            setNetStatus("WebSocket error. Verify WS_URL.", "#ff6347");
-        };
-        // NOTE: Actual gameplay sync not implemented yet.
-    } catch (err) {
-        setNetStatus("Failed to connect: " + err.message, "#ff6347");
-    }
-}
-
-// ===================================
 // PLAYER 2 VARIABLES (for multiplayer)
 // ===================================
 var player2X = 230;        // Player 2's position from the left
@@ -526,6 +471,15 @@ window.selectMode = selectMode;
 function startGame(chosenDifficulty, options) {
     var isRemote = options && options.fromNetwork;
     var providedTime = options && typeof options.timeLeft === "number" ? options.timeLeft : null;
+    
+    // In multiplayer, if we haven't received our role yet, defer until joined.
+    if (gameMode === "multi" && !isRemote && netRole === "solo") {
+        pendingStart = { difficulty: chosenDifficulty, options: options || {} };
+        connectMultiplayerSocket();
+        return;
+    }
+    
+    pendingStart = null;
     
     difficulty = chosenDifficulty;
     gameStarted = true;
