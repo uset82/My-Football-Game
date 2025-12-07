@@ -142,11 +142,6 @@ h1 {
     color: white;
 }
 
-#multi-btn {
-    background: linear-gradient(135deg, #9b59b6, #8e44ad);
-    color: white;
-}
-
 /* This styles the score and time display */
 #game-info {
     /* Space around the text */

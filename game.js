@@ -458,16 +458,15 @@ function selectMode(mode) {
         return;
     }
 
-    gameMode = mode;
-    document.getElementById("mode-selector").style.display = "none";
-
     if (mode === "single") {
+        gameMode = "single";
+        document.getElementById("mode-selector").style.display = "none";
         // Show difficulty selector for single player
         document.getElementById("difficulty-selector").style.display = "block";
-    } else {
-        // Start local multiplayer game directly (medium difficulty)
-        startGame("medium");
+        return;
     }
+
+    // Unknown mode; leave selector visible.
 }
 
 // Make selectMode available globally
