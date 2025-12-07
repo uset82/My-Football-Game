@@ -357,6 +357,13 @@ function snapshotState() {
         playerY: playerY,
         player2X: player2X,
         player2Y: player2Y,
+        enemies: enemies.map(function(e) {
+            return { x: e.x, y: e.y, speedX: e.speedX, speedY: e.speedY };
+        }),
+        goalkeeperX: goalkeeperX,
+        goalkeeperY: goalkeeperY,
+        myGoalkeeperX: myGoalkeeperX,
+        myGoalkeeperY: myGoalkeeperY,
         ballX: ballX,
         ballY: ballY,
         ballSpeedX: ballSpeedX,
@@ -381,6 +388,23 @@ function applyRemoteState(payload) {
     playerY = s.playerY;
     player2X = s.player2X;
     player2Y = s.player2Y;
+    if (s.enemies && s.enemies.length) {
+        enemies = s.enemies.map(function(e) {
+            return { x: e.x, y: e.y, speedX: e.speedX, speedY: e.speedY };
+        });
+    }
+    if (typeof s.goalkeeperX === "number") {
+        goalkeeperX = s.goalkeeperX;
+    }
+    if (typeof s.goalkeeperY === "number") {
+        goalkeeperY = s.goalkeeperY;
+    }
+    if (typeof s.myGoalkeeperX === "number") {
+        myGoalkeeperX = s.myGoalkeeperX;
+    }
+    if (typeof s.myGoalkeeperY === "number") {
+        myGoalkeeperY = s.myGoalkeeperY;
+    }
     ballX = s.ballX;
     ballY = s.ballY;
     ballSpeedX = s.ballSpeedX;
@@ -3169,8 +3193,8 @@ function gameLoop() {
         movePlayer2();  // Player 2 movement (multiplayer only)
         moveBall();
 
-        // In single player, move AI enemies; in multiplayer, skip AI
-        if (gameMode === "single") {
+        // In single player, move AI enemies; in multiplayer host simulates them for both clients
+        if (gameMode === "single" || (gameMode === "multi" && isHost())) {
             moveEnemies();
         }
 
@@ -3183,7 +3207,7 @@ function gameLoop() {
         updateParticles();
 
         // Check for collisions
-        if (gameMode === "single") {
+        if (gameMode === "single" || (gameMode === "multi" && isHost())) {
             checkEnemyCollision();
             checkBallEnemyCollision();
         }
@@ -3208,11 +3232,8 @@ function gameLoop() {
     drawMyGoalkeeper();
     drawReferee();
 
-    // Draw enemies only in single player mode
-    if (gameMode === "single") {
-        drawEnemies();
-    }
-
+    // Draw enemies (AI defenders) in all modes; host drives their state in multiplayer
+    drawEnemies();
     drawTeammates();
     drawPlayer();
     drawPlayer2();  // Draw Player 2 (multiplayer only)
