@@ -6,7 +6,19 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const PORT = process.env.PORT || 3000;
-const server = http.createServer();
+
+// Create HTTP server with health check endpoint
+const server = http.createServer((req, res) => {
+    // Health check endpoint for Render
+    if (req.url === "/" || req.url === "/health") {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end("Football Game Multiplayer Server Running");
+    } else {
+        res.writeHead(404);
+        res.end("Not Found");
+    }
+});
+
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
