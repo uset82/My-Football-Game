@@ -1529,6 +1529,18 @@ function movePlayer2() {
         player2PowerLevel += 2;
         if (player2PowerLevel > maxPower) player2PowerLevel = maxPower;
     }
+
+    // DEBUG: Show P2 input state on host's screen
+    if (isHost()) {
+        var debugDiv = document.getElementById("p2-debug");
+        if (!debugDiv) {
+            debugDiv = document.createElement("div");
+            debugDiv.id = "p2-debug";
+            debugDiv.style.cssText = "position:fixed;top:50px;right:10px;background:rgba(0,0,0,0.8);color:#0f0;padding:10px;font-family:monospace;z-index:9999;border-radius:5px;";
+            document.body.appendChild(debugDiv);
+        }
+        debugDiv.innerHTML = "P2 Inputs:<br>L:" + p2LeftPressed + " R:" + p2RightPressed + "<br>U:" + p2UpPressed + " D:" + p2DownPressed + "<br>P2X:" + Math.round(player2X) + " P2Y:" + Math.round(player2Y);
+    }
 }
 
 // --- Function to find the closest player to the ball ---
