@@ -286,7 +286,7 @@ function connectMultiplayerSocket() {
 function emitInput(role) {
     if (!wsConnection || wsConnection.disconnected || gameMode !== "multi") return;
     if (role === "p1") {
-        wsConnection.emit("input", {
+        var inputData = {
             role: "p1",
             room: roomId,
             keys: {
@@ -297,9 +297,11 @@ function emitInput(role) {
                 isChargingPower: isChargingPower,
                 powerLevel: powerLevel
             }
-        });
+        };
+        wsConnection.emit("input", inputData);
+        console.log("[P1] Emitting input:", inputData.keys);
     } else if (role === "p2") {
-        wsConnection.emit("input", {
+        var inputData = {
             role: "p2",
             room: roomId,
             keys: {
@@ -310,12 +312,15 @@ function emitInput(role) {
                 isChargingPower: player2ChargingPower,
                 powerLevel: player2PowerLevel
             }
-        });
+        };
+        wsConnection.emit("input", inputData);
+        console.log("[P2] Emitting input:", inputData.keys);
     }
 }
 
 function applyRemoteInput(payload) {
     if (!payload || !payload.role || payload.role === netRole) return;
+    console.log("[" + netRole + "] Received remote input from " + payload.role + ":", payload.keys);
     if (payload.role === "p1") {
         leftPressed = !!payload.keys.leftPressed;
         rightPressed = !!payload.keys.rightPressed;
@@ -335,12 +340,16 @@ function applyRemoteInput(payload) {
 
 function startStateSync() {
     if (!isHost() || !wsConnection || stateSyncInterval) return;
+    console.log("[Host] Starting state sync - sending every 120ms");
     stateSyncInterval = setInterval(function () {
         if (!wsConnection || wsConnection.disconnected) return;
+        var stateData = snapshotState();
         wsConnection.emit("state", {
             room: roomId,
-            data: snapshotState()
+            data: stateData
         });
+        // Log every 10th state update to avoid console spam
+        if (Math.random() < 0.1) console.log("[Host] Sent state - P2 pos:", stateData.player2X, stateData.player2Y);
     }, 120);
 }
 
@@ -384,6 +393,7 @@ function snapshotState() {
 function applyRemoteState(payload) {
     if (!payload || isHost()) return; // host is authoritative
     var s = payload.data || payload;
+    if (Math.random() < 0.1) console.log("[P2] Received state from host - P2 pos:", s.player2X, s.player2Y);
     playerX = s.playerX;
     playerY = s.playerY;
     player2X = s.player2X;
