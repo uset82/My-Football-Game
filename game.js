@@ -357,7 +357,7 @@ function snapshotState() {
         playerY: playerY,
         player2X: player2X,
         player2Y: player2Y,
-        enemies: enemies.map(function(e) {
+        enemies: enemies.map(function (e) {
             return { x: e.x, y: e.y, speedX: e.speedX, speedY: e.speedY };
         }),
         goalkeeperX: goalkeeperX,
@@ -389,7 +389,7 @@ function applyRemoteState(payload) {
     player2X = s.player2X;
     player2Y = s.player2Y;
     if (s.enemies && s.enemies.length) {
-        enemies = s.enemies.map(function(e) {
+        enemies = s.enemies.map(function (e) {
             return { x: e.x, y: e.y, speedX: e.speedX, speedY: e.speedY };
         });
     }
@@ -1144,6 +1144,13 @@ document.addEventListener("keydown", function (event) {
 
     // ===== PLAYER 2 CONTROLS (WASD + E) =====
     if (gameMode === "multi") {
+        // When netRole is p2, arrow keys control Player 2 (red team)
+        if (netRole === "p2" && event.key === "ArrowLeft") { p2LeftPressed = true; }
+        if (netRole === "p2" && event.key === "ArrowRight") { p2RightPressed = true; }
+        if (netRole === "p2" && event.key === "ArrowUp") { p2UpPressed = true; }
+        if (netRole === "p2" && event.key === "ArrowDown") { p2DownPressed = true; }
+        if (netRole === "p2" && event.key === " ") { event.preventDefault(); if (player2ChargingPower && player2PowerLevel > 20) { kickBall(true, 2); playSound("powerKick"); } else { kickBall(false, 2); playSound("kick"); } player2PowerLevel = 0; player2ChargingPower = false; }
+        if (netRole === "p2" && event.key === "Shift") { player2ChargingPower = true; }
         if (netRole !== "p1" && (event.key === "a" || event.key === "A")) {
             p2LeftPressed = true;
         }
@@ -1205,6 +1212,12 @@ document.addEventListener("keyup", function (event) {
 
     // ===== PLAYER 2 KEY RELEASE =====
     if (gameMode === "multi") {
+        // Arrow key releases for remote P2
+        if (netRole === "p2" && event.key === "ArrowLeft") { p2LeftPressed = false; }
+        if (netRole === "p2" && event.key === "ArrowRight") { p2RightPressed = false; }
+        if (netRole === "p2" && event.key === "ArrowUp") { p2UpPressed = false; }
+        if (netRole === "p2" && event.key === "ArrowDown") { p2DownPressed = false; }
+        if (netRole === "p2" && event.key === "Shift") { player2ChargingPower = false; }
         if (netRole !== "p1" && (event.key === "a" || event.key === "A")) {
             p2LeftPressed = false;
         }
