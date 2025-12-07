@@ -276,7 +276,27 @@ function connectMultiplayerSocket() {
             applyRemoteState(payload);
         });
         wsConnection.on("start", function (payload) {
+            console.log("[" + netRole + "] Received START event from host!", payload);
             startGame(payload.difficulty || "medium", { fromNetwork: true, timeLeft: payload.timeLeft });
+        });
+        wsConnection.on("player-joined", function (payload) {
+            console.log("[" + netRole + "] Player joined:", payload);
+            // If we're host and P2 joined, auto-start the game
+            if (isHost() && payload.role === "p2") {
+                console.log("[Host] P2 connected! Starting game in 1.5 seconds...");
+                // Update UI if QR modal is visible
+                var waitingText = document.getElementById("waiting-text");
+                if (waitingText) {
+                    waitingText.textContent = "✅ Player 2 Connected!";
+                    waitingText.className = "connected-status";
+                }
+                setTimeout(function () {
+                    var qrModal = document.getElementById("qr-modal");
+                    if (qrModal) qrModal.style.display = "none";
+                    console.log("[Host] Calling startGame now!");
+                    startGame("medium");
+                }, 1500);
+            }
         });
     } catch (err) {
         setNetStatus("Failed to connect: " + err.message, "#ff6347");
@@ -563,23 +583,8 @@ function createRoom() {
         qrContainer.innerHTML = "<p style='color: #ffd166;'>QR library loading... Refresh page.</p>";
     }
 
-    // Connect to multiplayer server
+    // Connect to multiplayer server (player-joined listener is in connectMultiplayerSocket)
     connectMultiplayerSocket();
-
-    // Listen for player 2 joining
-    if (wsConnection) {
-        wsConnection.on("player-joined", function (payload) {
-            if (payload.role === "p2") {
-                document.getElementById("waiting-text").textContent = "✅ Player 2 Connected!";
-                document.getElementById("waiting-text").className = "connected-status";
-                // Auto-start game after short delay
-                setTimeout(function () {
-                    document.getElementById("qr-modal").style.display = "none";
-                    startGame("medium");
-                }, 1500);
-            }
-        });
-    }
 }
 window.createRoom = createRoom;
 
