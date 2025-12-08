@@ -193,6 +193,17 @@ var wsConnection = null;
 var resolvedWsUrl = resolveWsUrl();
 var stateSyncInterval = null;
 var pendingStart = null;
+var useWebRTC = false;
+var rtcPeer = null;
+var rtcChannel = null;
+var rtcRole = null;
+var rtcRoomRef = null;
+var rtcOfferRef = null;
+var rtcAnswerRef = null;
+var rtcCandidatesRef = null;
+var rtcRemoteHello = false;
+var firebaseApp = null;
+var firebaseDb = null;
 
 function resolveRoomId() {
     var params = new URLSearchParams(window.location.search);
@@ -234,6 +245,10 @@ function isHost() {
 
 function connectMultiplayerSocket() {
     if (wsConnection || gameMode !== "multi") return;
+    if (!resolvedWsUrl && hasFirebaseConfig()) {
+        connectWebRTCSignaling();
+        return;
+    }
     if (!resolvedWsUrl) {
         setNetStatus("Online multiplayer server not configured. Set WS_URL or add ?ws=wss://your-server", "#ffd166");
         return;
@@ -304,9 +319,10 @@ function connectMultiplayerSocket() {
 }
 
 function emitInput(role) {
-    if (!wsConnection || wsConnection.disconnected || gameMode !== "multi") return;
+    if (gameMode !== "multi") return;
+    var inputData;
     if (role === "p1") {
-        var inputData = {
+        inputData = {
             role: "p1",
             room: roomId,
             keys: {
@@ -318,10 +334,8 @@ function emitInput(role) {
                 powerLevel: powerLevel
             }
         };
-        wsConnection.emit("input", inputData);
-        console.log("[P1] Emitting input:", inputData.keys);
     } else if (role === "p2") {
-        var inputData = {
+        inputData = {
             role: "p2",
             room: roomId,
             keys: {
@@ -333,9 +347,9 @@ function emitInput(role) {
                 powerLevel: player2PowerLevel
             }
         };
-        wsConnection.emit("input", inputData);
-        console.log("[P2] Emitting input:", inputData.keys);
     }
+    if (!inputData) return;
+    sendNetEvent("input", inputData);
 }
 
 function applyRemoteInput(payload) {
@@ -359,16 +373,15 @@ function applyRemoteInput(payload) {
 }
 
 function startStateSync() {
-    if (!isHost() || !wsConnection || stateSyncInterval) return;
+    if (!isHost() || stateSyncInterval) return;
     console.log("[Host] Starting state sync - sending every 120ms");
     stateSyncInterval = setInterval(function () {
-        if (!wsConnection || wsConnection.disconnected) return;
+        if (!isHost()) return;
         var stateData = snapshotState();
-        wsConnection.emit("state", {
+        sendNetEvent("state", {
             room: roomId,
             data: stateData
         });
-        // Log every 10th state update to avoid console spam
         if (Math.random() < 0.1) console.log("[Host] Sent state - P2 pos:", stateData.player2X, stateData.player2Y);
     }, 120);
 }
@@ -377,6 +390,202 @@ function stopStateSync() {
     if (stateSyncInterval) {
         clearInterval(stateSyncInterval);
         stateSyncInterval = null;
+    }
+}
+
+// ===================================
+// TRANSPORT HELPERS (WebRTC + Socket)
+// ===================================
+function hasFirebaseConfig() {
+    return typeof window !== "undefined" && window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey;
+}
+
+function isRtcReady() {
+    return useWebRTC && rtcChannel && rtcChannel.readyState === "open";
+}
+
+function sendRtcMessage(type, payload) {
+    if (!isRtcReady()) return;
+    try {
+        rtcChannel.send(JSON.stringify({ type: type, payload: payload }));
+    } catch (err) {
+        console.warn("[RTC] send failed", err);
+    }
+}
+
+function sendNetEvent(type, payload) {
+    if (isRtcReady()) {
+        sendRtcMessage(type, payload);
+    } else if (wsConnection && !wsConnection.disconnected) {
+        wsConnection.emit(type, payload);
+    }
+}
+
+// ===================================
+// WEBRTC SIGNALING VIA FIREBASE
+// ===================================
+function connectWebRTCSignaling() {
+    if (!hasFirebaseConfig()) return;
+    useWebRTC = true;
+    setNetStatus("Setting up P2P (WebRTC)...", "#ffd166");
+    try {
+        if (!firebaseApp) {
+            firebaseApp = firebase.initializeApp(window.FIREBASE_CONFIG);
+            firebaseDb = firebase.database();
+        }
+    } catch (e) {
+        console.error("Firebase init failed", e);
+        setNetStatus("Firebase init failed: " + e.message, "#ff6347");
+        useWebRTC = false;
+        return;
+    }
+
+    rtcRoomRef = firebaseDb.ref("rooms/" + roomId);
+    rtcOfferRef = rtcRoomRef.child("offer");
+    rtcAnswerRef = rtcRoomRef.child("answer");
+    rtcCandidatesRef = rtcRoomRef.child("candidates");
+
+    // Claim host role atomically
+    rtcRoomRef.child("host").transaction(function (current) {
+        if (current === null) {
+            return { claimedAt: Date.now() };
+        }
+        return current;
+    }).then(function (result) {
+        rtcRole = result.committed ? "p1" : "p2";
+        netRole = rtcRole;
+        setNetStatus("Room " + roomId + " | You are " + netRole.toUpperCase() + " (P2P)", "#06d6a0");
+        setupPeerConnection();
+    }).catch(function (err) {
+        console.error("Role claim failed", err);
+        setNetStatus("Failed to set up P2P: " + err.message, "#ff6347");
+    });
+}
+
+function setupPeerConnection() {
+    rtcPeer = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+
+    rtcPeer.onicecandidate = function (event) {
+        if (event.candidate) {
+            rtcCandidatesRef.child(rtcRole).push(event.candidate.toJSON());
+        }
+    };
+
+    rtcPeer.onconnectionstatechange = function () {
+        if (rtcPeer.connectionState === "connected") {
+            setNetStatus("P2P connected (" + rtcRole + ")", "#06d6a0");
+        } else if (rtcPeer.connectionState === "disconnected" || rtcPeer.connectionState === "failed") {
+            setNetStatus("P2P disconnected (" + rtcPeer.connectionState + ")", "#ff6347");
+            rtcChannel = null;
+        }
+    };
+
+    if (rtcRole === "p1") {
+        rtcChannel = rtcPeer.createDataChannel("game");
+        attachRtcChannelHandlers(rtcChannel);
+        createAndSendOffer();
+    } else {
+        rtcPeer.ondatachannel = function (event) {
+            rtcChannel = event.channel;
+            attachRtcChannelHandlers(rtcChannel);
+        };
+        listenForOfferThenAnswer();
+    }
+
+    listenForRemoteCandidates();
+}
+
+function attachRtcChannelHandlers(channel) {
+    channel.onopen = function () {
+        setNetStatus("P2P channel open (" + rtcRole + ")", "#06d6a0");
+        if (rtcRole === "p2") {
+            sendRtcMessage("hello", { role: rtcRole });
+        }
+    };
+    channel.onmessage = function (event) {
+        try {
+            var msg = JSON.parse(event.data);
+            handleRtcMessage(msg);
+        } catch (err) {
+            console.warn("Bad RTC message", err);
+        }
+    };
+    channel.onclose = function () {
+        setNetStatus("P2P channel closed", "#ff6347");
+    };
+}
+
+function createAndSendOffer() {
+    rtcPeer.createOffer().then(function (offer) {
+        return rtcPeer.setLocalDescription(offer);
+    }).then(function () {
+        return rtcOfferRef.set(rtcPeer.localDescription.toJSON());
+    }).catch(function (err) {
+        console.error("Offer error", err);
+        setNetStatus("Offer failed: " + err.message, "#ff6347");
+    });
+
+    rtcAnswerRef.on("value", function (snap) {
+        var ans = snap.val();
+        if (ans && ans.sdp && rtcPeer.signalingState !== "stable") {
+            rtcPeer.setRemoteDescription(new RTCSessionDescription(ans));
+        }
+    });
+}
+
+function listenForOfferThenAnswer() {
+    rtcOfferRef.on("value", function (snap) {
+        var off = snap.val();
+        if (!off || !off.sdp || rtcPeer.signalingState !== "stable") return;
+        rtcPeer.setRemoteDescription(new RTCSessionDescription(off)).then(function () {
+            return rtcPeer.createAnswer();
+        }).then(function (answer) {
+            return rtcPeer.setLocalDescription(answer);
+        }).then(function () {
+            return rtcAnswerRef.set(rtcPeer.localDescription.toJSON());
+        }).catch(function (err) {
+            console.error("Answer error", err);
+            setNetStatus("Answer failed: " + err.message, "#ff6347");
+        });
+    });
+}
+
+function listenForRemoteCandidates() {
+    var other = rtcRole === "p1" ? "p2" : "p1";
+    rtcCandidatesRef.child(other).on("child_added", function (snap) {
+        var candidate = snap.val();
+        if (candidate) {
+            rtcPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(function (err) {
+                console.warn("Add ICE failed", err);
+            });
+        }
+    });
+}
+
+function handleRtcMessage(msg) {
+    if (!msg || !msg.type) return;
+    switch (msg.type) {
+        case "hello":
+            rtcRemoteHello = true;
+            setNetStatus("P2 connected! Room " + roomId, "#06d6a0");
+            // Auto-start for host after hello
+            if (isHost() && !gameStarted) {
+                setTimeout(function () { startGame("medium"); }, 1000);
+            }
+            break;
+        case "input":
+            applyRemoteInput(msg.payload);
+            break;
+        case "state":
+            applyRemoteState(msg.payload);
+            break;
+        case "start":
+            startGame(msg.payload.difficulty || "medium", { fromNetwork: true, timeLeft: msg.payload.timeLeft });
+            break;
+        default:
+            break;
     }
 }
 
@@ -761,8 +970,8 @@ function startGame(chosenDifficulty, options) {
     }
 
     // Broadcast start to other player if host
-    if (!isRemote && gameMode === "multi" && isHost() && wsConnection && !wsConnection.disconnected) {
-        wsConnection.emit("start", { room: roomId, difficulty: difficulty, timeLeft: timeLeft });
+    if (!isRemote && gameMode === "multi" && isHost()) {
+        sendNetEvent("start", { room: roomId, difficulty: difficulty, timeLeft: timeLeft });
     }
 
     // Begin state sync if host
