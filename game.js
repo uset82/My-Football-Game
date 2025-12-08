@@ -202,6 +202,9 @@ var rtcOfferRef = null;
 var rtcAnswerRef = null;
 var rtcCandidatesRef = null;
 var rtcRemoteHello = false;
+var rtcOfferListener = null;
+var rtcAnswerListener = null;
+var rtcCandidateListener = null;
 var firebaseApp = null;
 var firebaseDb = null;
 
@@ -421,6 +424,34 @@ function sendNetEvent(type, payload) {
     }
 }
 
+// Remove Firebase listeners for WebRTC signaling to prevent duplicates on reconnects.
+function detachRtcOfferListener() {
+    if (rtcOfferRef && rtcOfferListener) {
+        rtcOfferRef.off("value", rtcOfferListener);
+        rtcOfferListener = null;
+    }
+}
+
+function detachRtcAnswerListener() {
+    if (rtcAnswerRef && rtcAnswerListener) {
+        rtcAnswerRef.off("value", rtcAnswerListener);
+        rtcAnswerListener = null;
+    }
+}
+
+function detachRtcCandidateListener() {
+    if (rtcCandidateListener && rtcCandidateListener.ref && rtcCandidateListener.handler) {
+        rtcCandidateListener.ref.off("child_added", rtcCandidateListener.handler);
+        rtcCandidateListener = null;
+    }
+}
+
+function cleanupRtcSignalListeners() {
+    detachRtcOfferListener();
+    detachRtcAnswerListener();
+    detachRtcCandidateListener();
+}
+
 // ===================================
 // WEBRTC SIGNALING VIA FIREBASE
 // ===================================
@@ -439,6 +470,8 @@ function connectWebRTCSignaling() {
         useWebRTC = false;
         return;
     }
+
+    cleanupRtcSignalListeners();
 
     rtcRoomRef = firebaseDb.ref("rooms/" + roomId);
     rtcOfferRef = rtcRoomRef.child("offer");
@@ -463,6 +496,8 @@ function connectWebRTCSignaling() {
 }
 
 function setupPeerConnection() {
+    cleanupRtcSignalListeners();
+
     rtcPeer = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     });
@@ -518,6 +553,8 @@ function attachRtcChannelHandlers(channel) {
 }
 
 function createAndSendOffer() {
+    detachRtcAnswerListener();
+
     rtcPeer.createOffer().then(function (offer) {
         return rtcPeer.setLocalDescription(offer);
     }).then(function () {
@@ -527,16 +564,19 @@ function createAndSendOffer() {
         setNetStatus("Offer failed: " + err.message, "#ff6347");
     });
 
-    rtcAnswerRef.on("value", function (snap) {
+    rtcAnswerListener = function (snap) {
         var ans = snap.val();
         if (ans && ans.sdp && rtcPeer.signalingState !== "stable") {
             rtcPeer.setRemoteDescription(new RTCSessionDescription(ans));
         }
-    });
+    };
+    rtcAnswerRef.on("value", rtcAnswerListener);
 }
 
 function listenForOfferThenAnswer() {
-    rtcOfferRef.on("value", function (snap) {
+    detachRtcOfferListener();
+
+    rtcOfferListener = function (snap) {
         var off = snap.val();
         if (!off || !off.sdp || rtcPeer.signalingState !== "stable") return;
         rtcPeer.setRemoteDescription(new RTCSessionDescription(off)).then(function () {
@@ -549,19 +589,25 @@ function listenForOfferThenAnswer() {
             console.error("Answer error", err);
             setNetStatus("Answer failed: " + err.message, "#ff6347");
         });
-    });
+    };
+    rtcOfferRef.on("value", rtcOfferListener);
 }
 
 function listenForRemoteCandidates() {
+    detachRtcCandidateListener();
+
     var other = rtcRole === "p1" ? "p2" : "p1";
-    rtcCandidatesRef.child(other).on("child_added", function (snap) {
+    var remoteCandidatesRef = rtcCandidatesRef.child(other);
+    var handler = function (snap) {
         var candidate = snap.val();
         if (candidate) {
             rtcPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(function (err) {
                 console.warn("Add ICE failed", err);
             });
         }
-    });
+    };
+    remoteCandidatesRef.on("child_added", handler);
+    rtcCandidateListener = { ref: remoteCandidatesRef, handler: handler };
 }
 
 function handleRtcMessage(msg) {
